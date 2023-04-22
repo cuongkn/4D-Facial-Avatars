@@ -1,6 +1,5 @@
 .idea
+.DS_Store
 *.off
 
 __pycache__
-
-person_3
