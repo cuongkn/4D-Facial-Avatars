@@ -595,7 +595,7 @@ if __name__ == "__main__":
     import signal
 
     print("before signal registration")
-    signal.signal(signal.SIGUSR1, handle_pdb)
+    # signal.signal(signal.SIGUSR1, handle_pdb)
     print("after registration")
     #sys.settrace(gpu_profile)
 

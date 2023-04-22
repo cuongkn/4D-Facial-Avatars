@@ -6,4 +6,5 @@ tensorboard
 torch
 torchvision
 tqdm
-git+https://github.com/facebookresearch/pytorch3d.git@stable
+# https://github.com/facebookresearch/pytorch3d.git
+#git+https://github.com/facebookresearch/pytorch3d.git@stable
