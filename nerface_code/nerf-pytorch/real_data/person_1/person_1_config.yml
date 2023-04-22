@@ -21,7 +21,7 @@ dataset:
   # Type of dataset (Blender vs LLFF vs DeepVoxels vs something else)
   type: blender
   # Base directory of dataset.
-  basedir: content/4D-Facial-Avatars/nerface_code/nerf-pytorch/real_data/person_1
+  basedir: /content/4D-Facial-Avatars/nerface_code/nerf-pytorch/real_data/person_1
   #basedir: real_data/andrei_1_light
   #basedir: real_data/debug
   # Optionally, provide a path to the pre-cached dataset dir. This
