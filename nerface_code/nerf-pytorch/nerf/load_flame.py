@@ -83,7 +83,7 @@ def load_flame_data(basedir, half_res=False, testskip=1, debug=False, expression
                 else:
                     bboxs.append(np.array(frame["bbox"]))
 
-        imgs = (np.array(imgs) / 255.0).astype(np.float32)
+        imgs = (np.array(imgs).astype(np.float32) / 255.0).astype(np.float32)
         if load_frontal_faces:
             frontal_imgs = (np.array(frontal_imgs) / 255.0).astype(np.float32)
 

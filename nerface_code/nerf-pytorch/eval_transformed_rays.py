@@ -231,16 +231,26 @@ def main():
     i_train, i_val, i_test = None, None, None
     if cfg.dataset.type.lower() == "blender":
         # Load blender dataset
-        images, poses, render_poses, hwf, i_split, expressions, _, _ = load_flame_data(
-            cfg.dataset.basedir,
-            half_res=cfg.dataset.half_res,
-            testskip=cfg.dataset.testskip,
-            test=True
+
+        from nerf import nerface_dataloader
+        test_data = nerface_dataloader.NerfaceDataset(
+            mode='test',
+            cfg=cfg,
+            #N_max=100
         )
-        #i_train, i_val, i_test = i_split
-        i_test = i_split
-        H, W, focal = hwf
-        H, W = int(H), int(W)
+
+        # images, poses, render_poses, hwf, i_split, expressions, _, _ = load_flame_data(
+        #     cfg.dataset.basedir,
+        #     half_res=cfg.dataset.half_res,
+        #     testskip=cfg.dataset.testskip,
+        #     test=True
+        # )
+        # #i_train, i_val, i_test = i_split
+        # i_test = i_split
+        # H, W, focal = hwf
+        H, W = test_data.H, test_data.W
+        focal =0
+        hwf = [H, W, focal]
     elif cfg.dataset.type.lower() == "llff":
         # Load LLFF dataset
         images, poses, bds, render_poses, i_test = load_llff_data(
@@ -340,13 +350,13 @@ def main():
         #background = Image.open("./real_data/andrei_dvp/" + '/bg/00050.png')
         background.thumbnail((H,W))
         background = torch.from_numpy(np.array(background).astype(float)).to(device)
-        background = background/255
+        background = background[...,:3]/255
         print('loaded custom background of shape', background.shape)
 
         #background = torch.ones_like(background)
         #background.permute(2,0,1)
 
-    render_poses = render_poses.float().to(device)
+    #render_poses = render_poses.float().to(device)
 
     # Create directory to save images to.
     os.makedirs(configargs.savedir, exist_ok=True)
@@ -359,9 +369,9 @@ def main():
     times_per_image = []
 
     #render_poses = render_poses.float().to(device)
-    render_poses = poses[i_test].float().to(device)
+    #render_poses = poses[i_test].float().to(device)
     #expressions = torch.arange(-6,6,0.5).float().to(device)
-    render_expressions = expressions[i_test].float().to(device)
+    #render_expressions = expressions[i_test].float().to(device)
     #avg_img = torch.mean(images[i_train],axis=0)
     #avg_img = torch.ones_like(avg_img)
 
@@ -369,7 +379,7 @@ def main():
     #for i, pose in enumerate(tqdm(render_poses)):
     index_of_image_after_train_shuffle = 0
     # render_expressions = render_expressions[[300]] ### TODO render specific expression
-
+    render_expressions=None
     #######################
     no_background = False
     no_expressions = False
@@ -389,20 +399,20 @@ def main():
         use_latent_code = True
         latent_codes = torch.zeros(5000,32,device=device)
 
-    for i, expression in enumerate(tqdm(render_expressions)):
+    for i in tqdm(range(len(test_data))):
     #for i in range(75,151):
-
-
-
-
-        #if i%25 != 0: ### TODO generate only every 25th im
+        _, pose, hwf, expression, _ = test_data[i]
+        H,W,focal = hwf
+    #if i%25 != 0: ### TODO generate only every 25th im
         #if i != 511: ### TODO generate only every 25th im
+        #    continue
+        #if i<4500:
         #    continue
         start = time.time()
         rgb = None, None
         disp = None, None
         with torch.no_grad():
-            pose = render_poses[i]
+            #pose = render_poses[i]
 
             if interpolate_mouth:
                 frame_id = 241
@@ -417,33 +427,37 @@ def main():
             #expression = render_expressions[0] ### TODO fixes expr
             #expression = torch.zeros_like(expression).to(device)
 
-            ablate = 'view_dir'
+            #ablate = 'view_dir'
+#            ablate=None
 
-            if ablate == 'expression':
-                pose = render_poses[100]
-            elif ablate == 'latent_code':
-                pose = render_poses[100]
-                expression = render_expressions[100]
-                if idx_map[100+i,1] >= 0:
-                    #print("found latent code for this image")
-                    index_of_image_after_train_shuffle = idx_map[100+i,1]
-            elif ablate == 'view_dir':
-                pose = render_poses[100]
-                expression = render_expressions[100]
-                _, ray_directions_ablation = get_ray_bundle(hwf[0], hwf[1], hwf[2], render_poses[240+i][:3, :4])
+#            if ablate == 'expression':
+#                pose = render_poses[100]
+#            elif ablate == 'latent_code':
+#                pose = render_poses[100]
+#                expression = render_expressions[100]
+#                if idx_map[100+i,1] >= 0:
+#                    #print("found latent code for this image")
+#                    index_of_image_after_train_shuffle = idx_map[100+i,1]
+#            elif ablate == 'view_dir':
+#                pose = render_poses[100]
+#                expression = render_expressions[100]
+#                _, ray_directions_ablation = get_ray_bundle(hwf[0], hwf[1], hwf[2], render_poses[240+i][:3, :4])
 
-            pose = pose[:3, :4]
+            pose = pose[:3, :4].to(device)
+            expression = expression.to(device)
 
             #pose = torch.from_numpy(np.array([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]))
             if use_latent_code:
-                if idx_map[i,1] >= 0:
-                    #print("found latent code for this image")
-                    index_of_image_after_train_shuffle = idx_map[i,1]
-            #index_of_image_after_train_shuffle = 10 ## TODO Fixes latent code
+                pass
+                #if idx_map[i,1] >= 0:
+                #    #print("found latent code for this image")
+                #    index_of_image_after_train_shuffle = idx_map[i,1]
+            index_of_image_after_train_shuffle = 10 ## TODO Fixes latent code
             #index_of_image_after_train_shuffle = idx_map[84,1] ## TODO Fixes latent code v2 for andrei
-            index_of_image_after_train_shuffle = idx_map[10,1] ## TODO Fixes latent code - USE THIS if not ablating!
+            #index_of_image_after_train_shuffle = idx_map[10,1] ## TODO Fixes latent code - USE THIS if not ablating!
 
             latent_code = latent_codes[index_of_image_after_train_shuffle].to(device) if use_latent_code else None
+
 
             #latent_code = torch.mean(latent_codes)
             ray_origins, ray_directions = get_ray_bundle(hwf[0], hwf[1], hwf[2], pose)
@@ -463,11 +477,12 @@ def main():
                 background_prior = background.view(-1,3) if (background is not None) else None,
                 #background_prior = torch.ones_like(background).view(-1,3),  # White background
                 latent_code = latent_code,
-                ray_directions_ablation = ray_directions_ablation
+                #ray_directions_ablation = ray_directions_ablation
             )
             rgb = rgb_fine if rgb_fine is not None else rgb_coarse
             normals = torch_normal_map(disp_fine, focal, weights, clean=True)
             #normals = normal_map_from_depth_map_backproject(disp_fine.cpu().numpy())
+            ## TODO uncomment to save normal maps:
             save_plt_image(normals.cpu().numpy().astype('uint8'), os.path.join(configargs.savedir, 'normals', f"{i:04d}.png"))
             #if configargs.save_disparity_image:
             if False:
@@ -482,7 +497,12 @@ def main():
         #rgb[torch.where(weights>0.1)] = (rgb * weights + (torch.ones_like(weights)-weights)*torch.ones_like(weights))
         times_per_image.append(time.time() - start)
         if configargs.savedir:
-            savefile = os.path.join(configargs.savedir, f"{i:04d}.png")
+            ## for MPI comparison:
+            from math import floor
+            dir = configargs.savedir# + ('/%d' % int(floor(i*12/(len(test_data)))))
+            os.makedirs(dir, exist_ok=True)
+            savefile = os.path.join(dir, f"{i:04d}.png")
+            #savefile = os.path.join(configargs.savedir, f"{i:04d}.png")
             imageio.imwrite(
                 savefile, cast_to_image(rgb[..., :3], cfg.dataset.type.lower())
             )
